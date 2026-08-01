@@ -20,6 +20,9 @@ class ExtractedRequirement(BaseModel): requirement_id:str; requirement:str; cate
 class RequirementExtraction(BaseModel): requirements:list[ExtractedRequirement]
 class RequirementClassification(BaseModel): requirement_id:str; match_status:MatchStatus; evidence_refs:list[str]=[]; explanation:str; confidence:Confidence
 class RequirementClassifications(BaseModel): classifications:list[RequirementClassification]
+class OpaqueClassification(BaseModel):
+    model_config=ConfigDict(extra='forbid')
+    requirement_id:str; match_status:MatchStatus; evidence_ids:list[str]=[]; confidence:Confidence
 class ResolvedEvidence(BaseModel): reference:str; label:str; value:str
 class JobRequirementMatch(BaseModel): requirement:str; category:Category; importance:Importance; match_status:MatchStatus; evidence_refs:list[str]=[]; resolved_evidence:list[ResolvedEvidence]=[]; explanation:str; confidence:Confidence; gap_classification:GapClassification|None=None
 class JobMatchDraft(BaseModel): executive_summary:str; requirements:list[JobRequirementMatch]; candidate_strengths:list[str]=[]; interview_focus_areas:list[str]=[]; interview_questions:list[str]=[]; limitations:list[str]=[]
