@@ -15,7 +15,7 @@ async def job_match(request:JobMatchRequest):
     session=db()
     try:
         if request.session_id: get_session(session,str(request.session_id))
-        result=await analyze(request.job_description,request.job_title,settings.ollama_model,settings.ollama_base_url,{'temperature':0.0,'num_ctx':settings.chat_num_ctx,'num_predict':3000,'top_p':settings.chat_top_p,'repeat_penalty':settings.chat_repeat_penalty})
+        result=await analyze(request.job_description,request.job_title,settings.ollama_job_match_model,settings.ollama_base_url,{'temperature':settings.job_match_temperature,'num_ctx':settings.job_match_num_ctx,'num_predict':settings.job_match_num_predict,'batch_size':settings.job_match_requirement_batch_size})
         return save(session,result,request.job_description,str(request.session_id) if request.session_id else None)
     except UnknownSessionError: err('SESSION_NOT_FOUND','Conversation session was not found.',False,404)
     except OllamaError: err('OLLAMA_UNAVAILABLE','Local Ollama is unavailable.',True,503)

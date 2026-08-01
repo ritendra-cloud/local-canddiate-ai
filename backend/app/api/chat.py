@@ -29,7 +29,7 @@ async def chat(payload: ChatRequest, request: Request):
         chunks=[]
         try:
             yield event('session',{'session_id':session.public_id})
-            async for chunk in stream_chat(settings.ollama_base_url,settings.ollama_model,messages,generation_options()):
+            async for chunk in stream_chat(settings.ollama_base_url,settings.chat_model,messages,generation_options()):
                 if await request.is_disconnected(): return
                 chunks.append(chunk); yield event('token',{'content':chunk})
             saved=add_message(db,session,'assistant',''.join(chunks))
