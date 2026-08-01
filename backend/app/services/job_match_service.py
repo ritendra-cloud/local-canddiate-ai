@@ -1,5 +1,5 @@
 from uuid import uuid4
-import json, logging, re
+import json, logging, re, sys
 from pathlib import Path
 from sqlalchemy import select
 from app.models.job_match import *
@@ -8,6 +8,13 @@ from app.services.ollama_service import structured_chat, structured_chat_details
 from app.models.database import JobAnalysis
 WEIGHTS={Importance.MUST_HAVE:3,Importance.PREFERRED:1.5,Importance.RESPONSIBILITY:1,Importance.UNCLEAR:.5}; VALUES={MatchStatus.MATCH:1,MatchStatus.PARTIAL:.5,MatchStatus.MISSING:0,MatchStatus.UNCLEAR:0}
 logger=logging.getLogger(__name__)
+diagnostics=logging.getLogger('local_candidate_ai.job_match.diagnostics')
+def emit_diagnostic(**event):
+    from app.config import settings
+    if not settings.job_match_diagnostics: return
+    if not diagnostics.handlers:
+        handler=logging.StreamHandler(sys.stderr); handler.setLevel(logging.INFO); handler.setFormatter(logging.Formatter('%(message)s')); diagnostics.addHandler(handler)
+    diagnostics.setLevel(logging.INFO); diagnostics.propagate=False; diagnostics.info(json.dumps(event,sort_keys=True))
 def resolve_reference(profile, ref:str):
     if not ref or ref.startswith('import_metadata') or '..' in ref or '/' in ref: raise ValueError('Invalid evidence reference.')
     value=profile.model_dump(mode='json');
@@ -92,16 +99,16 @@ def python_requirements(description):
             key=text.lower()
             if key not in seen: seen.add(key); result.append((text,importance))
     return [ExtractedRequirement(requirement_id=f'R{i:03d}',requirement=text,category=python_category(text),importance=importance) for i,(text,importance) in enumerate(result[:30],1)],ignored
-async def validated_call(messages,schema,model,base_url,options,validator,label):
+async def validated_call(messages,schema,model,base_url,options,validator,label,request_id='local',requirement_id=None,evidence_item_count=0):
     last=None
     for attempt in range(2):
         payload,diagnostics=await structured_chat_details(base_url,model,messages,schema,options)
         try:
             value=validator.model_validate(payload)
             if validator is RequirementExtraction and not value.requirements: raise ValueError('No meaningful job requirements were extracted.')
-            return value,diagnostics
+            emit_diagnostic(event='job_match_structured_attempt',request_id=request_id,stage=label,requirement_id=requirement_id,attempt=attempt+1,model=model,prompt_chars=diagnostics.get('prompt_characters'),schema_chars=diagnostics.get('schema_characters'),evidence_item_count=evidence_item_count,output_chars=diagnostics.get('output_characters'),duration_ms=diagnostics.get('duration_ms'),done_reason=diagnostics.get('done_reason'),validation_category=None,success=True,repair_planned=False); return value,diagnostics
         except Exception as exc:
-            last=exc; logger.info('job_match_structured_validation model=%s label=%s prompt_characters=%s schema_characters=%s output_characters=%s duration_ms=%s done_reason=%s validation_category=%s',model,label,diagnostics.get('prompt_characters'),diagnostics.get('schema_characters'),diagnostics.get('output_characters'),diagnostics.get('duration_ms'),diagnostics.get('done_reason'),type(exc).__name__)
+            last=exc; emit_diagnostic(event='job_match_structured_attempt',request_id=request_id,stage=label if attempt==0 else label+'_REPAIR',requirement_id=requirement_id,attempt=attempt+1,model=model,prompt_chars=diagnostics.get('prompt_characters'),schema_chars=diagnostics.get('schema_characters'),evidence_item_count=evidence_item_count,output_chars=diagnostics.get('output_characters'),duration_ms=diagnostics.get('duration_ms'),done_reason=diagnostics.get('done_reason'),validation_category='PYDANTIC_VALIDATION_FAILED',success=False,repair_planned=attempt==0)
             if attempt==0: messages=messages+[{'role':'user','content':'Repair JSON only. Return the required schema. Validation category: '+type(exc).__name__}]
     raise ValueError(f'{label} structured output could not be validated.') from last
 def build_summary(result,recommendation,groups):
@@ -121,6 +128,7 @@ def finalize_requirements(profile,requirements,classifications,title,model):
     limitations=[f'No verified evidence for {item.requirement}.' for item in groups[MatchStatus.MISSING]+groups[MatchStatus.UNCLEAR]][:6]
     return JobMatchAnalysis(analysis_id=uuid4(),job_title=title,alignment_score=result,recommendation=recommendation,executive_summary=build_summary(result,recommendation,groups),matched_requirements=groups[MatchStatus.MATCH],partial_matches=groups[MatchStatus.PARTIAL],missing_requirements=groups[MatchStatus.MISSING],unclear_requirements=groups[MatchStatus.UNCLEAR],candidate_strengths=strengths,interview_focus_areas=focus,limitations=limitations,scoring_details=details,created_at=__import__('datetime').datetime.now(__import__('datetime').timezone.utc),model=model)
 async def analyze(description,title,model,base_url,options):
+    request_id=str(uuid4())
     profile=load_profile(__import__('app.config',fromlist=['settings']).settings.candidate_path)
     parsed,ignored=python_requirements(description)
     extracted=RequirementExtraction(requirements=parsed)
@@ -131,7 +139,7 @@ async def analyze(description,title,model,base_url,options):
         if not mapping: classifications.append(RequirementClassification(requirement_id=requirement.requirement_id,match_status=MatchStatus.MISSING,evidence_refs=[],explanation='',confidence=Confidence.LOW)); continue
         safe=[{'id':key,'type':short[i]['type'],'value':short[i].get('value','')[:280],'context':short[i].get('context','')[:120]} for i,key in enumerate(mapping)]
         message={'role':'system','content':'Classify one requirement. MATCH/PARTIAL require opaque evidence_ids. Return JSON only.\nREQUIREMENT:\n'+json.dumps(requirement.model_dump(mode='json'))+'\nEVIDENCE:\n'+json.dumps(safe)}
-        classified,_=await validated_call([message],OpaqueClassification.model_json_schema(),model,base_url,{**options,'num_predict':256},OpaqueClassification,f'classification_{requirement.requirement_id}')
+        classified,_=await validated_call([message],OpaqueClassification.model_json_schema(),model,base_url,{**options,'num_predict':256},OpaqueClassification,'EVIDENCE_CLASSIFICATION',request_id,requirement.requirement_id,len(safe))
         if classified.requirement_id!=requirement.requirement_id or len(classified.evidence_ids)!=len(set(classified.evidence_ids)) or any(item not in mapping for item in classified.evidence_ids) or (classified.match_status in {MatchStatus.MATCH,MatchStatus.PARTIAL} and not classified.evidence_ids): raise ValueError(f'Classification requirement {requirement.requirement_id} invalid.')
         classifications.append(RequirementClassification(requirement_id=requirement.requirement_id,match_status=classified.match_status,evidence_refs=[mapping[item] for item in classified.evidence_ids],explanation='',confidence=classified.confidence))
     return finalize_requirements(profile,extracted.requirements,classifications,title,model)

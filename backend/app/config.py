@@ -13,6 +13,7 @@ class Settings(BaseSettings):
     chat_temperature: float = 0.1; chat_num_ctx: int = 16384; chat_num_predict: int = 1000; chat_top_p: float = 0.9; chat_repeat_penalty: float = 1.1
     job_match_num_ctx: int = 16384; job_match_num_predict: int = 2048; job_match_temperature: float = 0; job_match_requirement_batch_size: int = 2
     job_match_max_evidence_items: int = 8; job_match_max_evidence_value_chars: int = 280; job_match_max_evidence_context_chars: int = 120
+    job_match_diagnostics: bool = False
     @field_validator('app_host')
     @classmethod
     def local_host(cls, value: str) -> str:
