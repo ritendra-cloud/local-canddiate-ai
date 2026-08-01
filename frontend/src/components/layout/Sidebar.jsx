@@ -1,0 +1,2 @@
+const links = [['overview', 'Overview'], ['profile', 'Candidate Profile'], ['chat', 'Candidate Chat'], ['job-match', 'Job Match'], ['conversations', 'Conversations'], ['analyses', 'Saved Analyses'], ['settings', 'Settings & Privacy']];
+export default function Sidebar({ page, setPage, close }) { return <nav className="sidebar-nav" aria-label="Primary navigation">{links.map(([id, label]) => <button key={id} className={page === id ? 'active' : ''} aria-current={page === id ? 'page' : undefined} onClick={() => { setPage(id); close?.(); }}>{label}</button>)}</nav>; }

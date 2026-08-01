@@ -1,1 +1,0 @@
-export default function Header({name,dark,setDark}){return <header><h1>{name||'Local CandidateAI'}</h1><button onClick={()=>setDark(!dark)} aria-label="Toggle dark mode">{dark?'Light theme':'Dark theme'}</button></header>}

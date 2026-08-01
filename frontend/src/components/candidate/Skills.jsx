@@ -1,0 +1,2 @@
+import Card from '../common/Card'; import { values } from '../../utils/profile';
+export default function Skills({ skills = {} }) { return <div className="skill-grid">{Object.entries(skills).map(([category, items]) => <Card key={category}><h3>{category.replaceAll('_', ' ')}</h3><div className="chips">{values(items).map((name) => <span className="chip" key={name}>{name}</span>)}</div></Card>)}</div>; }

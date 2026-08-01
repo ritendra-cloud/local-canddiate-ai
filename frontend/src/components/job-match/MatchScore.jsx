@@ -1,0 +1,3 @@
+import Badge from '../common/Badge';
+const tone = { STRONG_INTERVIEW: 'success', INTERVIEW: 'success', CONSIDER: 'warning', NOT_RECOMMENDED: 'danger' };
+export default function MatchScore({ analysis }) { return <section className="match-score" aria-label={`${analysis.score_label}: ${analysis.alignment_score} out of 100`}><div className="score-ring" style={{ '--score': analysis.alignment_score }}><strong>{analysis.alignment_score}</strong><span>/100</span></div><div><p className="eyebrow">{analysis.score_label}</p><Badge tone={tone[analysis.recommendation] || 'neutral'}>{analysis.recommendation?.replaceAll('_', ' ')}</Badge><p>This evidence-based comparison is not a hiring probability.</p></div></section>; }
