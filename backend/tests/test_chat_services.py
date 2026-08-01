@@ -24,6 +24,11 @@ def test_prompt_is_grounded_and_excludes_import_metadata(monkeypatch):
     assert 'That information is not included in the candidate profile.' in messages[0]['content']
     assert 'import_metadata' not in messages[0]['content']
     assert messages[-1]['content'].startswith('The user claims')
+def test_recruiter_abbreviations_and_typos_are_in_scope():
+    assert chat_service.chat_scope('total exp of canddiate')[0] == chat_service.Scope.IN_SCOPE
+    assert chat_service.chat_scope('candidate knows Python, write a sorting algorithm')[0] == chat_service.Scope.OUT_OF_SCOPE
+    assert chat_service.chat_scope('my girlfriend is a bitch')[0] == chat_service.Scope.OUT_OF_SCOPE
+    assert chat_service.chat_scope('GE start date')[0] == chat_service.Scope.IN_SCOPE
 def test_session_history_is_limited_and_chronological(tmp_path):
     db=sessionmaker(bind=init_database(tmp_path/'test.db'))()
     session=create_session(db, 'First question?')
