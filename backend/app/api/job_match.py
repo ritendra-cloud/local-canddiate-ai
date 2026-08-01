@@ -19,7 +19,10 @@ async def job_match(request:JobMatchRequest):
         return save(session,result,request.job_description,str(request.session_id) if request.session_id else None)
     except UnknownSessionError: err('SESSION_NOT_FOUND','Conversation session was not found.',False,404)
     except OllamaError: err('OLLAMA_UNAVAILABLE','Local Ollama is unavailable.',True,503)
-    except ValueError as exc: err('STRUCTURED_OUTPUT_INVALID','The local model returned an invalid structured analysis.',True,502)
+    except ValueError as exc:
+        code='NO_MEANINGFUL_REQUIREMENTS' if 'No meaningful' in str(exc) else 'STRUCTURED_OUTPUT_INVALID'
+        err(code,'The local model could not produce a valid job analysis.',True,502)
+    except Exception: err('JOB_ANALYSIS_PERSISTENCE_FAILED','The job analysis could not be saved.',True,503)
     finally: session.close()
 @router.get('/job-analyses')
 def analyses():

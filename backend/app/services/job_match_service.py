@@ -18,6 +18,11 @@ def resolve_reference(profile, ref:str):
         elif isinstance(value,dict) and segment in value and segment!='import_metadata': value=value[segment]
         else: raise ValueError('Invalid evidence reference.')
     return value
+def resolved_evidence(profile, ref):
+    value=resolve_reference(profile,ref)
+    label=ref.split('.')[0].replace('_',' ').title().rstrip('s')+' evidence'
+    if isinstance(value,(dict,list)): value=json.dumps(value,ensure_ascii=False)
+    return ResolvedEvidence(reference=ref,label=label,value=str(value))
 def score(requirements):
     if not requirements: raise ValueError('No meaningful job requirements were extracted.')
     total=sum(WEIGHTS[r.importance] for r in requirements); value=sum(WEIGHTS[r.importance]*VALUES[r.match_status] for r in requirements); result=round(value/total*100)
@@ -29,7 +34,7 @@ def score(requirements):
 def finalize(profile,draft, title, model):
     for r in draft.requirements:
         if r.match_status in {MatchStatus.MATCH,MatchStatus.PARTIAL} and not r.evidence_refs: raise ValueError('Supported matches require evidence references.')
-        for ref in r.evidence_refs: resolve_reference(profile,ref)
+        r.resolved_evidence=[resolved_evidence(profile,ref) for ref in r.evidence_refs]
     result,recommendation,details=score(draft.requirements); groups={s:[] for s in MatchStatus}
     for r in draft.requirements: groups[r.match_status].append(r)
     return JobMatchAnalysis(analysis_id=uuid4(),job_title=title,alignment_score=result,recommendation=recommendation,executive_summary=draft.executive_summary,matched_requirements=groups[MatchStatus.MATCH],partial_matches=groups[MatchStatus.PARTIAL],missing_requirements=groups[MatchStatus.MISSING],unclear_requirements=groups[MatchStatus.UNCLEAR],candidate_strengths=draft.candidate_strengths,interview_focus_areas=draft.interview_focus_areas,interview_questions=draft.interview_questions,limitations=draft.limitations,scoring_details=details,created_at=__import__('datetime').datetime.now(__import__('datetime').timezone.utc),model=model)
