@@ -6,7 +6,8 @@ from app.config import settings
 from app.api.health import router as health_router
 from app.api.profile import router as profile_router
 from app.api.chat import router as chat_router
-app=FastAPI(title=settings.app_name); app.include_router(health_router, prefix='/api'); app.include_router(profile_router, prefix='/api'); app.include_router(chat_router, prefix='/api')
+from app.api.job_match import router as job_match_router
+app=FastAPI(title=settings.app_name); app.include_router(health_router, prefix='/api'); app.include_router(profile_router, prefix='/api'); app.include_router(chat_router, prefix='/api'); app.include_router(job_match_router,prefix='/api')
 DIST=Path(__file__).resolve().parents[2] / 'frontend' / 'dist'
 if DIST.exists(): app.mount('/assets', StaticFiles(directory=DIST/'assets'), name='assets')
 @app.get('/{path:path}', include_in_schema=False)
