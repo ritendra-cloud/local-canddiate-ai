@@ -15,4 +15,6 @@ backend/.env
 data/source/*.doc
 data/source/*.docx
 data/source/*.pdf
+data/source/linkedin/*.pdf
+data/source/linkedin/*.zip
 data/processed/candidate.json

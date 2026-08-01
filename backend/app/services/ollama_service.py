@@ -29,3 +29,14 @@ async def stream_chat(base_url: str, model: str, messages: list[dict], options: 
                     if item.get('done'): return
     except httpx.HTTPError as exc:
         raise OllamaUnavailable('Local Ollama is unavailable.') from exc
+
+async def structured_chat(base_url: str, model: str, messages: list[dict], schema: dict, options: dict) -> dict:
+    payload={'model':model,'messages':messages,'stream':False,'format':schema,'options':options}
+    try:
+        async with httpx.AsyncClient(timeout=httpx.Timeout(120,connect=3,read=100)) as client:
+            response=await client.post(f'{base_url}/api/chat',json=payload); response.raise_for_status(); data=response.json()
+        content=data.get('message',{}).get('content')
+        if not isinstance(content,str): raise OllamaStreamError('Invalid structured response from the local model.')
+        return json.loads(content)
+    except json.JSONDecodeError as exc: raise OllamaStreamError('Invalid structured response from the local model.') from exc
+    except httpx.HTTPError as exc: raise OllamaUnavailable('Local Ollama is unavailable.') from exc
