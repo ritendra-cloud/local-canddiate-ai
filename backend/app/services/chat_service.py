@@ -12,7 +12,7 @@ def chat_scope(message:str, history=()):
     text=normalize_chat_query(message)
     generic=re.compile(r'\b(write|generate|create|implement|solve|fix)\b.*\b(code|program|function|algorithm|api|query|test)\b|\b(explain|translate|calculate)\b|system prompt|ignore previous instructions|coding assistant')
     anchors=re.compile(r'candidate|profile|resume|experience|skill|certification|role|project|achievement|employer|company|leadership|\b(he|his)\b')
-    employment=re.search(r'(calculate|total|years|career span|tenure|joining|join date|first job|resume date|latest.*date|actual).*?(experience|employment|role|resume|job)|experience.*?(date|calculate|resume)',text)
+    employment=re.search(r'(calculate|total|years|career span|tenure|joining|join date|first job|first joining|resume date|latest.*date|actual).*?(experience|employment|role|resume|job|date)|experience.*?(date|calculate|resume)',text)
     if employment: return Scope.IN_SCOPE,'EMPLOYMENT_DURATION',True
     if re.search(r'\b(ge|beckman|siemens|nse)\b.*\b(start|join|joining|end|left|last|tenure|role|date)\b',text): return Scope.IN_SCOPE,'EMPLOYMENT_FACT',True
     if generic.search(text): return Scope.OUT_OF_SCOPE,'GENERAL_ASSISTANCE',False
