@@ -26,7 +26,7 @@ def test_final_analysis_is_python_scored(profile):
     assert result.alignment_score==100 and result.recommendation==Recommendation.STRONG_INTERVIEW
 @pytest.mark.asyncio
 async def test_repair_once_then_succeeds(monkeypatch,profile):
-    outputs=[{'requirements':[]},{'requirements':[{'requirement_id':'R1','requirement':'Skill','category':'TECHNICAL_SKILL','importance':'MUST_HAVE'}]},{'requirement_id':'R1','match_status':'MATCH','evidence_ids':['E01'],'confidence':'HIGH'}]; calls=[]
+    outputs=[{'requirements':[]},{'requirements':[{'requirement_id':'R1','requirement':'Skill','category':'TECHNICAL_SKILL','importance':'MUST_HAVE'}]},{'requirement_id':'R001','match_status':'MATCH','evidence_ids':['E01'],'confidence':'HIGH'}]; calls=[]
     async def fake(*args): calls.append(args); return outputs.pop(0)
     async def details(*args): return await fake(*args),{}
     monkeypatch.setattr('app.services.job_match_service.load_profile',lambda _:profile);monkeypatch.setattr('app.services.job_match_service.structured_chat_details',details)

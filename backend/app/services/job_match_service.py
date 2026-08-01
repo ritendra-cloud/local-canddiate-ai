@@ -91,14 +91,20 @@ def python_requirements(description):
         lower=line.lower().rstrip(':')
         matched=next((value for key,value in headings.items() if key in lower and len(line)<80),None)
         if matched is not None: section=matched; continue
-        if control.search(line): ignored+=1; continue
-        for candidate in re.split(r'(?<=[.;])\s+|\n',line):
+        for candidate in re.split(r'(?<=[.;!?])\s+',line):
             text=re.sub(r'\s+',' ',candidate).strip(' .;:')[:300]
-            if len(text)<3 or control.search(text): continue
+            if len(text)<3: continue
+            if control.search(text): ignored+=1; continue
             importance=Importance.MUST_HAVE if re.search(r'\b(must|required|mandatory|minimum)\b',text,re.I) else Importance.PREFERRED if re.search(r'\b(preferred|desirable|bonus)\b',text,re.I) else section
             key=text.lower()
             if key not in seen: seen.add(key); result.append((text,importance))
     return [ExtractedRequirement(requirement_id=f'R{i:03d}',requirement=text,category=python_category(text),importance=importance) for i,(text,importance) in enumerate(result[:30],1)],ignored
+def normalize_extracted(items):
+    seen=set(); normalized=[]
+    for item in items:
+        text=re.sub(r'\s+',' ',item.requirement).strip()[:300]; key=text.lower()
+        if len(text)>=3 and key not in seen: seen.add(key); normalized.append(ExtractedRequirement(requirement_id=f'R{len(normalized)+1:03d}',requirement=text,category=python_category(text),importance=item.importance))
+    return normalized
 async def validated_call(messages,schema,model,base_url,options,validator,label,request_id='local',requirement_id=None,evidence_item_count=0):
     last=None
     for attempt in range(2):
@@ -132,7 +138,10 @@ async def analyze(description,title,model,base_url,options):
     profile=load_profile(__import__('app.config',fromlist=['settings']).settings.candidate_path)
     parsed,ignored=python_requirements(description)
     extracted=RequirementExtraction(requirements=parsed)
-    if not extracted.requirements: extracted,_=await validated_call(prompt_messages(profile,description),RequirementExtraction.model_json_schema(),model,base_url,options,RequirementExtraction,'REQUIREMENT_EXTRACTION')
+    if not extracted.requirements:
+        extracted,_=await validated_call(prompt_messages(profile,description),RequirementExtraction.model_json_schema(),model,base_url,options,RequirementExtraction,'REQUIREMENT_EXTRACTION')
+        extracted=RequirementExtraction(requirements=normalize_extracted(extracted.requirements))
+    if not all(re.fullmatch(r'R\d{3}',item.requirement_id) for item in extracted.requirements): raise ValueError('Requirement IDs are invalid.')
     catalog=evidence_catalog(profile); classifications=[]
     for requirement in extracted.requirements:
         short=shortlist_evidence(requirement,catalog,options.get('max_evidence_items',8)); mapping={f'E{i+1:02d}':item['ref'] for i,item in enumerate(short)}
