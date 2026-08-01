@@ -11,4 +11,5 @@ async def health():
     except Exception: profile={'available':True,'valid':False}
     try: init_database(settings.database_file); database={'available':True}
     except Exception: database={'available':False}
-    return {'application':'online','storage':'local','ollama':await status(settings.ollama_base_url, settings.ollama_model),'candidate_profile':profile,'database':database}
+    chat=await status(settings.ollama_base_url, settings.chat_model); job_match=await status(settings.ollama_base_url, settings.ollama_job_match_model)
+    return {'application':'online','storage':'local','ollama':chat,'job_match_ollama':job_match,'candidate_profile':profile,'database':database}

@@ -1,0 +1,3 @@
+import { useState } from 'react';
+import Header from './Header'; import Sidebar from './Sidebar';
+export default function AppShell({ children, ...props }) { const [menu, setMenu] = useState(false); return <><a className="skip-link" href="#main-content">Skip to content</a><Header {...props} onMenu={() => setMenu(true)} /><div className="app-layout"><aside className="desktop-sidebar"><Sidebar {...props} /></aside>{menu && <div className="mobile-drawer"><button aria-label="Close navigation" className="drawer-close" onClick={() => setMenu(false)}>×</button><Sidebar {...props} close={() => setMenu(false)} /></div>}<main id="main-content" tabIndex="-1" className="workspace">{children}</main></div></>; }

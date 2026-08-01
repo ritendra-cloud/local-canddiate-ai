@@ -33,3 +33,7 @@ Each accepted reference yields a UI-facing object such as `{"reference":"skills.
 Python makes exactly one structured repair request after invalid model output. Failed analyses are not persisted. Safe errors use `{"error":{"code":"...","message":"...","retryable":true}}`. Saved analyses use `GET /api/job-analyses`, `GET /api/job-analyses/{analysis_id}`, `DELETE /api/job-analyses/{analysis_id}`, and `DELETE /api/job-analyses`; no internal database IDs, prompts, or raw model output are exposed.
 
 Routine tests use temporary databases, fictional profiles, and mocked Ollama responses. For real local verification, start with `make start`, run the supplied local HTTP client with an extended timeout, then clean up its temporary analyses and run `make stop`. The real-model check is deliberately not part of `make test` or `make build`.
+
+## Job Match model selection
+
+Chat and Job Match have separate local settings. Both currently default to `qwen2.5-coder:7b`: it passed the local minimal structured-output probe, whereas installed `gemma4:e4b-mlx` did not. Job Match uses a compact two-stage extraction and evidence-classification flow with non-streaming schema-constrained calls; Python remains the sole scoring and recommendation authority. There is no automatic model fallback.
